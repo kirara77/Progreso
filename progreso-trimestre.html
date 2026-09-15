@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progreso del trimestre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #000000;
+    --bone: #FFFFFF;
+    --dim: #A0A0A0;
+    --hp-full: #FFFF00;
+    --hp-empty: #B20000;
+    --soul: #FF0000;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; background: transparent; }
+
+  body {
+    font-family: "Pixelify Sans", "Courier New", monospace;
+    color: var(--bone);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+  }
+
+  .box {
+    width: 100%;
+    max-width: 580px;
+    background: var(--void);
+    border: 5px solid var(--bone);
+    padding: 20px 22px 18px;
+  }
+
+  .name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 21px;
+    line-height: 1.2;
+  }
+
+  .title {
+    font-family: inherit;
+    font-size: 21px;
+    color: var(--bone);
+    background: transparent;
+    border: none;
+    padding: 0;
+    width: 9ch;
+    min-width: 5ch;
+  }
+  .title:focus { outline: none; color: var(--hp-full); }
+
+  .lv { color: var(--bone); }
+
+  .hp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .hp-label { font-size: 17px; letter-spacing: 1px; }
+
+  .track {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+    height: 22px;
+    min-width: 0;
+  }
+
+  .seg {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    padding: 0;
+    background: var(--hp-empty);
+    cursor: pointer;
+    position: relative;
+    font-family: inherit;
+    color: transparent;
+  }
+  .seg.done { background: var(--hp-full); }
+  .seg:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+  .seg:hover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--bone);
+    opacity: 0.35;
+  }
+
+  .hp-count {
+    font-size: 17px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lines {
+    margin-top: 18px;
+    font-size: 18px;
+    line-height: 1.5;
+  }
+  .lines p { margin: 0; }
+  .lines .star { color: var(--bone); }
+
+  .menu {
+    display: flex;
+    gap: 26px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .item {
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0 0 0 22px;
+    font-family: inherit;
+    font-size: 18px;
+    color: var(--hp-full);
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 11px;
+    height: 11px;
+    margin-top: -6px;
+    background: var(--soul);
+    clip-path: polygon(50% 100%, 0% 40%, 10% 15%, 30% 10%, 50% 28%, 70% 10%, 90% 15%, 100% 40%);
+    opacity: 0;
+  }
+  .item:hover::before,
+  .item:focus-visible::before { opacity: 1; }
+  .item:focus-visible { outline: none; }
+
+  .note {
+    margin-top: 14px;
+    font-size: 15px;
+    color: var(--dim);
+    display: none;
+  }
+  .note.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div class="name-row">
+    <input class="title" id="title" value="Q3 2026" aria-label="Nombre del trimestre" maxlength="12">
+    <span class="lv" id="lv">LV 1</span>
+  </div>
+
+  <div class="hp-row">
+    <span class="hp-label">HP</span>
+    <div class="track" id="track"></div>
+    <span class="hp-count" id="count">0 / 13</span>
+  </div>
+
+  <div class="lines">
+    <p><span class="star">*</span> <span id="line">Quedan 13 semanas del trimestre.</span></p>
+  </div>
+
+  <div class="menu">
+    <button class="item" id="minus">MENOS</button>
+    <button class="item" id="plus">MÁS</button>
+    <button class="item" id="reset">REINICIAR</button>
+  </div>
+
+  <div class="note" id="note">* El navegador no deja guardar aquí dentro. Abre el widget en otra pestaña.</div>
+</div>
+
+<script>
+  const KEY = 'progreso-trimestre-undertale-v1';
+  const DEFAULT_WEEKS = 13;
+
+  let state = { title: 'Q3 2026', totalWeeks: DEFAULT_WEEKS, done: [] };
+  let canSave = true;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && typeof p === 'object') {
+          if (typeof p.title === 'string') state.title = p.title;
+          state.totalWeeks = Number(p.totalWeeks) || DEFAULT_WEEKS;
+          state.done = Array.isArray(p.done) ? p.done.map(Number) : [];
+        }
+      }
+    } catch (e) { canSave = false; }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (e) {
+      canSave = false;
+      document.getElementById('note').classList.add('show');
+    }
+  }
+
+  const track = document.getElementById('track');
+  const countEl = document.getElementById('count');
+  const lineEl = document.getElementById('line');
+  const lvEl = document.getElementById('lv');
+  const titleEl = document.getElementById('title');
+
+  function render() {
+    titleEl.value = state.title;
+
+    track.innerHTML = '';
+    for (let i = 0; i < state.totalWeeks; i++) {
+      const done = state.done.includes(i);
+      const b = document.createElement('button');
+      b.className = 'seg' + (done ? ' done' : '');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', done ? 'true' : 'false');
+      b.setAttribute('aria-label', `Semana ${i + 1}${done ? ', completada' : ''}`);
+      b.addEventListener('click', () => toggle(i));
+      track.appendChild(b);
+    }
+
+    const n = state.done.filter(i => i < state.totalWeeks).length;
+    const left = state.totalWeeks - n;
+
+    countEl.textContent = `${n} / ${state.totalWeeks}`;
+    lvEl.textContent = `LV ${n + 1}`;
+
+    if (left === 0) {
+      lineEl.textContent = 'Trimestre completo. Te llenas de determinación.';
+    } else if (left === 1) {
+      lineEl.textContent = 'Queda 1 semana del trimestre.';
+    } else {
+      lineEl.textContent = `Quedan ${left} semanas del trimestre.`;
+    }
+  }
+
+  function toggle(i) {
+    const idx = state.done.indexOf(i);
+    if (idx === -1) state.done.push(i); else state.done.splice(idx, 1);
+    save(); render();
+  }
+
+  titleEl.addEventListener('input', () => { state.title = titleEl.value; save(); });
+
+  document.getElementById('plus').addEventListener('click', () => {
+    if (state.totalWeeks < 30) { state.totalWeeks++; save(); render(); }
+  });
+
+  document.getElementById('minus').addEventListener('click', () => {
+    if (state.totalWeeks > 1) {
+      state.totalWeeks--;
+      state.done = state.done.filter(i => i < state.totalWeeks);
+      save(); render();
+    }
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    state.done = []; save(); render();
+  });
+
+  load();
+  render();
+  if (!canSave) document.getElementById('note').classList.add('show');
+</script>
+
+</body>
+</html>
