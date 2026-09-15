@@ -20,26 +20,41 @@
 
   * { box-sizing: border-box; }
 
-  html, body { margin: 0; padding: 0; background: var(--void); }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--void);
+    height: 100%;
+    overflow: hidden;
+  }
 
   body {
     font-family: "Pixelify Sans", "Courier New", monospace;
     color: var(--bone);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 14px 18px;
     -webkit-font-smoothing: none;
     font-smooth: never;
   }
 
+  #stage-wrap {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 900px;
+    transform: translate(-50%, -50%);
+    visibility: hidden;
+  }
+
   .box {
     width: 100%;
-    max-width: 1100px;
     background: var(--void);
     border: 5px solid var(--border);
-    padding: 14px 22px;
+    padding: 16px 24px;
   }
 
   .row {
@@ -144,9 +159,10 @@
   .item:focus-visible { outline: none; }
 
   .line {
-    margin-top: 10px;
+    margin-top: 12px;
     font-size: 15px;
     color: var(--bone);
+    white-space: nowrap;
   }
   .line .star { color: var(--bone); }
 
@@ -155,46 +171,47 @@
     font-size: 13px;
     color: var(--dim);
     display: none;
+    white-space: normal;
   }
   .note.show { display: block; }
-
-  @media (max-width: 720px) {
-    .row { flex-wrap: wrap; }
-    .track { flex-basis: 100%; order: 3; }
-    .menu { order: 4; flex-basis: 100%; justify-content: flex-start; }
-  }
 </style>
 </head>
 <body>
 
-<div class="box">
-  <div class="row">
-    <div class="name-block">
-      <input class="title" id="title" value="Q3 2026" aria-label="Nombre del trimestre" maxlength="12">
-      <span class="lv" id="lv">LV 1</span>
-    </div>
+<div id="stage-wrap">
+  <div id="stage">
+    <div class="box">
+      <div class="row">
+        <div class="name-block">
+          <input class="title" id="title" value="Q3 2026" aria-label="Nombre del trimestre" maxlength="12">
+          <span class="lv" id="lv">LV 1</span>
+        </div>
 
-    <span class="hp-label">HP</span>
+        <span class="hp-label">HP</span>
 
-    <div class="track" id="track"></div>
+        <div class="track" id="track"></div>
 
-    <span class="hp-count" id="count">0 / 13</span>
+        <span class="hp-count" id="count">0 / 13</span>
 
-    <div class="menu">
-      <button class="item" id="minus" type="button">MENOS</button>
-      <button class="item" id="plus" type="button">MÁS</button>
-      <button class="item" id="reset" type="button">REINICIAR</button>
+        <div class="menu">
+          <button class="item" id="minus" type="button">MENOS</button>
+          <button class="item" id="plus" type="button">MÁS</button>
+          <button class="item" id="reset" type="button">REINICIAR</button>
+        </div>
+      </div>
+
+      <div class="line"><span class="star">*</span> <span id="text">Quedan 13 semanas del trimestre.</span></div>
+
+      <div class="note" id="note">* El navegador no deja guardar aquí dentro. Abre el widget en otra pestaña.</div>
     </div>
   </div>
-
-  <div class="line"><span class="star">*</span> <span id="text">Quedan 13 semanas del trimestre.</span></div>
-
-  <div class="note" id="note">* El navegador no deja guardar aquí dentro. Abre el widget en otra pestaña.</div>
 </div>
 
 <script>
   const KEY = 'progreso-trimestre-undertale-v1';
   const DEFAULT_WEEKS = 13;
+  const PAD = 16;
+  const MAX_SCALE = 1.6;
 
   let state = { title: 'Q3 2026', totalWeeks: DEFAULT_WEEKS, done: [] };
   let canSave = true;
@@ -227,6 +244,7 @@
   const textEl = document.getElementById('text');
   const lvEl = document.getElementById('lv');
   const titleEl = document.getElementById('title');
+  const stage = document.getElementById('stage');
 
   function render() {
     titleEl.value = state.title;
@@ -256,6 +274,19 @@
     } else {
       textEl.textContent = `Quedan ${left} semanas del trimestre.`;
     }
+
+    fitStage();
+  }
+
+  function fitStage() {
+    stage.style.visibility = 'hidden';
+    stage.style.transform = 'translate(-50%, -50%) scale(1)';
+    const rect = stage.getBoundingClientRect();
+    const availW = window.innerWidth - PAD * 2;
+    const availH = window.innerHeight - PAD * 2;
+    const scale = Math.min(availW / rect.width, availH / rect.height, MAX_SCALE);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    stage.style.visibility = 'visible';
   }
 
   function toggle(i) {
@@ -264,7 +295,7 @@
     save(); render();
   }
 
-  titleEl.addEventListener('input', () => { state.title = titleEl.value; save(); });
+  titleEl.addEventListener('input', () => { state.title = titleEl.value; save(); fitStage(); });
 
   document.getElementById('plus').addEventListener('click', () => {
     if (state.totalWeeks < 30) { state.totalWeeks++; save(); render(); }
@@ -281,6 +312,9 @@
   document.getElementById('reset').addEventListener('click', () => {
     state.done = []; save(); render();
   });
+
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('load', fitStage);
 
   load();
   render();
