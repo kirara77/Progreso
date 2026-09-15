@@ -15,11 +15,12 @@
     --hp-full: #FFFF00;
     --hp-empty: #B20000;
     --soul: #FF0000;
+    --border: #FFFFFF;
   }
 
   * { box-sizing: border-box; }
 
-  html, body { margin: 0; padding: 0; background: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--void); }
 
   body {
     font-family: "Pixelify Sans", "Courier New", monospace;
@@ -37,7 +38,7 @@
     width: 100%;
     max-width: 1100px;
     background: var(--void);
-    border: 5px solid var(--bone);
+    border: 5px solid var(--border);
     padding: 14px 22px;
   }
 
